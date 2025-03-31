@@ -6,10 +6,11 @@ import pdb
 
 # Parameters
 gamma = 1e-3
-Sigma = np.eye(10)
-NUM_ITERATIONS = 5
-ps = np.array([0.3, -0.1]).reshape(-1,1)
-epsilons = np.array([0.4, 0.2]).reshape(-1,1)
+dim = 3
+Sigma = np.eye(dim)
+NUM_ITERATIONS = 50
+ps = np.array([0.3, -0.1, 0.2]).reshape(-1,1)
+epsilons = np.array([0.4, 0.2, 0.1]).reshape(-1,1)
 
 obj_vals = {}
 us = {}
@@ -17,7 +18,7 @@ us = {}
 
 ############################################
 # Cutting set method
-X = np.random.uniform(-1., 1., size=(10, 10)) # Initial sample returns
+X = np.random.uniform(-1., 1., size=(dim, 20)) # Initial sample returns
 
 obj_vals["SIP"] = []
 us["SIP"] = []
@@ -26,15 +27,15 @@ for iter in range(NUM_ITERATIONS):
 
     ############################################
     # Solve approximate version of problem (13)
-    u = cp.Variable(10)
-    alpha = cp.Variable(2)
-    beta  = cp.Variable(2)
+    u = cp.Variable(dim)
+    alpha = cp.Variable(ps.shape[0])
+    beta  = cp.Variable(ps.shape[0])
     t = cp.Variable()
 
     constraints = []
     for i in range(X.shape[1]):
         sample_x = X[:, i].reshape(-1,1)
-        constraints += [-u.T@sample_x + gamma*cp.quad_form(u, Sigma) - beta.T@sample_x[0:2, :] + beta.T@ps + alpha.T@epsilons - t<= 0]
+        constraints += [-u.T@sample_x + gamma*cp.quad_form(u, Sigma) - beta.T@sample_x + beta.T@ps + alpha.T@epsilons - t<= 0]
     constraints += [alpha>=0]
     constraints += [alpha+beta >=0]
     constraints += [cp.sum(u)==1, u>=-2, u<=2]
@@ -52,8 +53,8 @@ for iter in range(NUM_ITERATIONS):
     alpha_star = alpha.value.reshape(-1,1)
     t_star = t.value
 
-    x = cp.Variable(10)
-    obj = cp.Maximize(-u_star.T@x - beta_star.T@x[0:2])
+    x = cp.Variable(dim)
+    obj = cp.Maximize(-u_star.T@x - beta_star.T@x)
     constraints = [x>=-1, x<=1]
     problem_2 = cp.Problem(obj, constraints=constraints)
     problem_2.solve()
@@ -67,13 +68,13 @@ for iter in range(NUM_ITERATIONS):
 obj_vals["Sample"] = []
 us["Sample"] = []
 
-X = np.random.uniform(-1., 1., size=(10, 100)) # Initial sample returns
+X = np.random.uniform(-1., 1., size=(dim, 100)) # Initial sample returns
 
 for iter in range(NUM_ITERATIONS):
 
     ############################################
     # Find u
-    u = cp.Variable(10)
+    u = cp.Variable(dim)
     
     terms = []
     for i in range(X.shape[1]):
@@ -90,7 +91,7 @@ for iter in range(NUM_ITERATIONS):
     ############################################
     # Update distribution
     n = X.shape[1]
-    X_vars = [cp.Variable((10, 1)) for _ in range(n)]
+    X_vars = [cp.Variable((dim, 1)) for _ in range(n)]
 
     terms = []
     for i in range(len(X_vars)):
@@ -99,10 +100,10 @@ for iter in range(NUM_ITERATIONS):
 
     constraints = [X_vars[_] >= -1 for _ in range(n)]
     constraints += [X_vars[_] <= 1 for _ in range(n)]
-    constraints += [1/n*cp.sum([X_vars[_][0, 0] for _ in range(n)]) - ps[0] <= epsilons[0]]
-    constraints += [1/n*cp.sum([X_vars[_][0, 0] for _ in range(n)]) - ps[0] >= -epsilons[0]]
-    constraints += [1/n*cp.sum([X_vars[_][1, 0] for _ in range(n)]) - ps[1] <= epsilons[1]]
-    constraints += [1/n*cp.sum([X_vars[_][1, 0] for _ in range(n)]) - ps[1] >= -epsilons[1]]
+    for i in range(dim):
+        constraints += [1/n*cp.sum([X_vars[_][i, 0] for _ in range(n)]) - ps[i] <= epsilons[i]]
+        constraints += [1/n*cp.sum([X_vars[_][i, 0] for _ in range(n)]) - ps[i] >= -epsilons[i]]
+    
 
     problem_2 = cp.Problem(cp.Maximize(cp.sum(terms)), constraints=constraints)
     problem_2.solve()
