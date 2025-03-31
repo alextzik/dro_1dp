@@ -7,7 +7,7 @@ import pdb
 # Parameters
 gamma = 1e-3
 Sigma = np.eye(10)
-NUM_ITERATIONS = 3
+NUM_ITERATIONS = 5
 ps = np.array([0.3, -0.1]).reshape(-1,1)
 epsilons = np.array([0.4, 0.2]).reshape(-1,1)
 
@@ -95,6 +95,7 @@ for iter in range(NUM_ITERATIONS):
     terms = []
     for i in range(len(X_vars)):
         terms += [-u_star.T@X_vars[i]]
+    terms += [gamma*u_star.T@Sigma@u_star]
 
     constraints = [X_vars[_] >= -1 for _ in range(n)]
     constraints += [X_vars[_] <= 1 for _ in range(n)]
@@ -115,11 +116,10 @@ plt.show()
 
 us["SIP"] = np.hstack(us["SIP"])
 us["Sample"] = np.hstack(us["Sample"])
-plt.plot(us["SIP"][0, :], us["SIP"][1, :], '*', label="SIP")
-plt.plot(us["Sample"][0, :], us["Sample"][1, :], '*', label="Sample")
+plt.plot(us["SIP"][0, -1], us["SIP"][1, -1], '*', label="SIP")
+plt.plot(us["Sample"][0, -1], us["Sample"][1, -1], '*', label="Sample")
 plt.legend()
 plt.show()
 
-pdb.set_trace()
 plt.plot(X[0, :], X[1, :], '*')
 plt.show()
