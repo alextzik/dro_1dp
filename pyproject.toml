@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "dro-1dp"
+version = "0.1.0"
+description = ""
+authors = ["Alexandros Tzikas <33734693+alextzik@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^2.2.4"
+cvxpy = "^1.6.4"
+dccp = "^1.0.5"
+matplotlib = "^3.10.1"
+scikit-learn = "^1.6.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
