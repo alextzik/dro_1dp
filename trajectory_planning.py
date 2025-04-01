@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cvxpy as cp
+import dccp
 import pdb
 from tqdm import tqdm
 
@@ -9,13 +10,21 @@ plt.rcParams['font.family'] = 'Times New Roman'
 plt.rcParams['font.size'] = 15
 
 # Parameters
-dim = 3
+dim = 2
 NUM_ITERATIONS = 50
-NUM_TRIALS = 20
-ps = np.array([0.3, -0.1, 0.2]).reshape(-1,1)
-epsilons = np.array([0.2, 0.2, 0.1]).reshape(-1,1)
-# ps = np.array([0., 0., 0.]).reshape(-1,1)
-# epsilons = 2*np.array([1., 1., 1.]).reshape(-1,1)
+NUM_TRIALS = 1
+ps = np.array([0.1, -0.1]).reshape(-1,1)
+epsilons = np.array([0.1, 0.2]).reshape(-1,1)
+A = np.array([[0.4, 1.5],
+              [0., 0.9]])
+B = np.array([[0.],
+              [1.]])
+T = 100
+z_star = np.array([[-1.],
+                   [1.4]])
+
+x_low = -0.3
+x_high = 0.3
 
 # Variables for results
 us = {}
@@ -25,24 +34,28 @@ us["Sample"] = []
 for trial in tqdm(range(NUM_TRIALS)):
     ########################################################################################
     # Cutting-set method
-    X = np.random.uniform(-1., 1., size=(dim, 15)) # Initial sample returns
+    X = np.random.uniform(x_low, x_high, size=(dim, 15)) # Initial sample returns
 
     # Main loop
     for iter in range(NUM_ITERATIONS):
         ############################################
         # Solve problem (17)
-        u = cp.Variable(dim)
+        u = cp.Variable((T, 1))
         alpha = cp.Variable(ps.shape[0])
         beta  = cp.Variable(ps.shape[0])
         t = cp.Variable()
 
         constraints = []
+        var = 0.
+        for tau in range(T):
+            var += np.linalg.matrix_power(A, T-1-tau)@B*u[tau, 0]
         for i in range(X.shape[1]):
             sample_x = X[:, i].reshape(-1,1)
-            constraints += [-u.T@sample_x - beta.T@sample_x + beta.T@ps + alpha.T@epsilons - t <= 0]
+            constraints += [cp.pnorm(np.linalg.matrix_power(A, T)@sample_x + var - z_star, 2) 
+                            - beta.T@sample_x + beta.T@ps + alpha.T@epsilons - t <= 0]
         constraints += [alpha >= 0]
         constraints += [alpha+beta >= 0]
-        constraints += [cp.sum(u)==1, u>=0] #u>=-2, u<=2] 
+        constraints += [u>=-0.1, u<=0.1] 
 
         problem_1 = cp.Problem(objective=cp.Minimize(t), constraints=constraints)
         problem_1.solve()
@@ -59,29 +72,38 @@ for trial in tqdm(range(NUM_TRIALS)):
         t_star = t.value
 
         x = cp.Variable(dim)
-        obj = cp.Maximize(-u_star.T@x - beta_star.T@x)
+        var = 0.
+        for tau in range(T):
+            var += np.linalg.matrix_power(A, T-1-tau)@B*u_star[tau, 0]
+        var += -z_star
+        var = var.reshape(-1,)
+        obj = cp.Maximize(cp.pnorm(np.linalg.matrix_power(A, T)@x + var, 2) - beta_star.T@x)
         constraints = [x>=-1, x<=1]
         problem_2 = cp.Problem(obj, constraints=constraints)
-        problem_2.solve()
+        if problem_1.value > 0:
+            problem_2.solve(method='dccp')
 
-        X = np.hstack([X, x.value.reshape(-1,1)])
+            X = np.hstack([X, x.value.reshape(-1,1)])
 
 
     ########################################################################################
     # Sample-based Approach
-    X_samples = np.random.uniform(-1., 1., size=(dim, 20)) # Initial sample returns
+    X_samples = np.random.uniform(x_low, x_high, size=(dim, 20)) # Initial sample returns
 
     for iter in range(NUM_ITERATIONS):
 
         ############################################
         # Find u
-        u = cp.Variable(dim)
+        u = cp.Variable((T,1))
         
+        var = 0.
+        for tau in range(T):
+            var += np.linalg.matrix_power(A, T-1-tau)@B*u[tau, 0]
         terms = []
         for i in range(X_samples.shape[1]):
             sample_x = X_samples[:, i].reshape(-1,1)
-            terms += [-u.T@sample_x]
-        constraints = [cp.sum(u)==1, u>=0] #u>=-2, u<=2] 
+            terms += [cp.pnorm(np.linalg.matrix_power(A, T)@sample_x + var - z_star, 2)]
+        constraints = [u>=-0.1, u<=0.1] 
         
         problem_1 = cp.Problem(cp.Minimize(cp.sum(terms)), constraints=constraints)
         problem_1.solve()
@@ -95,9 +117,12 @@ for trial in tqdm(range(NUM_TRIALS)):
         n = X_samples.shape[1]
         X_vars = [cp.Variable((dim, 1)) for _ in range(n)]
 
+        var = 0.
+        for tau in range(T):
+            var += np.linalg.matrix_power(A, T-1-tau)@B*u_star[tau, 0]
         terms = []
         for i in range(len(X_vars)):
-            terms += [-u_star.T@X_vars[i]]
+            terms += [cp.pnorm(np.linalg.matrix_power(A, T)@X_vars[i] - var - z_star, 2)]
 
         constraints = [X_vars[_] >= -1 for _ in range(n)]
         constraints += [X_vars[_] <= 1 for _ in range(n)]
@@ -106,18 +131,19 @@ for trial in tqdm(range(NUM_TRIALS)):
             constraints += [1/n*cp.sum([X_vars[_][i, 0] for _ in range(n)]) - ps[i] >= -epsilons[i]]
         
         problem_2 = cp.Problem(cp.Maximize(cp.sum(terms)), constraints=constraints)
-        problem_2.solve()
+        problem_2.solve(method='dccp')
         X_samples = np.hstack([X_vars[_].value.reshape(-1,1) for _ in range(n)])
         
-
 for key in us:
     us[key] = np.mean( np.hstack(us[key]), axis=1)
 
-width =0.3
-plt.bar(1+np.arange(dim), us["Sample"], width=width, label="baseline")
-plt.bar(1+np.arange(dim)+width, us["SIP"], width=width, label="proposed")
-plt.xlabel("Asset")
-plt.ylabel("Portfolio Weight")
-plt.xticks([1,2,3])
-plt.legend()
-plt.show()
+    var = 0.
+    for tau in range(T):
+        var += np.linalg.matrix_power(A, T-1-tau)@B*us[key][tau]
+
+    print(key)
+    print(var)
+    print(us[key])
+    print()
+
+
