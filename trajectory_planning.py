@@ -11,7 +11,7 @@ plt.rcParams['font.size'] = 15
 
 # Parameters
 dim = 2
-NUM_ITERATIONS = 50
+NUM_ITERATIONS = 80
 NUM_TRIALS = 1
 ps = np.array([0.1, -0.1]).reshape(-1,1)
 epsilons = np.array([0.1, 0.2]).reshape(-1,1)
@@ -19,9 +19,9 @@ A = np.array([[0.4, 1.5],
               [0., 0.9]])
 B = np.array([[0.],
               [1.]])
-T = 100
-z_star = np.array([[-1.],
-                   [1.4]])
+T = 50
+z_star = np.array([[0.],
+                   [0.]])
 
 x_low = -0.3
 x_high = 0.3
@@ -78,7 +78,7 @@ for trial in tqdm(range(NUM_TRIALS)):
         var += -z_star
         var = var.reshape(-1,)
         obj = cp.Maximize(cp.pnorm(np.linalg.matrix_power(A, T)@x + var, 2) - beta_star.T@x)
-        constraints = [x>=-1, x<=1]
+        constraints = [x>=x_low, x<=x_high]
         problem_2 = cp.Problem(obj, constraints=constraints)
         if problem_1.value > 0:
             problem_2.solve(method='dccp')
@@ -124,8 +124,8 @@ for trial in tqdm(range(NUM_TRIALS)):
         for i in range(len(X_vars)):
             terms += [cp.pnorm(np.linalg.matrix_power(A, T)@X_vars[i] - var - z_star, 2)]
 
-        constraints = [X_vars[_] >= -1 for _ in range(n)]
-        constraints += [X_vars[_] <= 1 for _ in range(n)]
+        constraints = [X_vars[_] >= x_low for _ in range(n)]
+        constraints += [X_vars[_] <= x_high for _ in range(n)]
         for i in range(dim):
             constraints += [1/n*cp.sum([X_vars[_][i, 0] for _ in range(n)]) - ps[i] <= epsilons[i]]
             constraints += [1/n*cp.sum([X_vars[_][i, 0] for _ in range(n)]) - ps[i] >= -epsilons[i]]
