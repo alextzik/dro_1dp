@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cvxpy as cp
+import dccp
 import pdb
 from tqdm import tqdm
 
@@ -11,11 +12,19 @@ plt.rcParams['font.size'] = 15
 # Parameters
 dim = 3
 NUM_ITERATIONS = 50
-NUM_TRIALS = 20
+NUM_TRIALS = 1
 ps = np.array([0.3, -0.1, 0.2]).reshape(-1,1)
-epsilons = np.array([0.2, 0.2, 0.1]).reshape(-1,1)
+epsilons = np.array([0.4, 0.2, 0.1]).reshape(-1,1)
 # ps = np.array([0., 0., 0.]).reshape(-1,1)
 # epsilons = 2*np.array([1., 1., 1.]).reshape(-1,1)
+
+VOL = True # indicates whether volatility constraints are present
+if VOL:
+    ps = np.array([0.3, -0.5, 0.3]).reshape(-1,1)
+    epsilons = np.array([0.1, 0.2, 0.1]).reshape(-1,1)
+
+    ps_vol = np.array([0.34, 0.26, 0.34]).reshape(-1,1)
+    epsilons_vol = np.array([0.05, 0.05, 0.05]).reshape(-1,1)
 
 # Variables for results
 us = {}
@@ -25,7 +34,7 @@ us["Sample"] = []
 for trial in tqdm(range(NUM_TRIALS)):
     ########################################################################################
     # Cutting-set method
-    X = np.random.uniform(-1., 1., size=(dim, 15)) # Initial sample returns
+    X = np.random.uniform(-1., 1., size=(dim, 150)) # Initial sample returns
 
     # Main loop
     for iter in range(NUM_ITERATIONS):
@@ -34,14 +43,28 @@ for trial in tqdm(range(NUM_TRIALS)):
         u = cp.Variable(dim)
         alpha = cp.Variable(ps.shape[0])
         beta  = cp.Variable(ps.shape[0])
+        if VOL:
+            alpha_vol = cp.Variable(ps_vol.shape[0])
+            beta_vol  = cp.Variable(ps_vol.shape[0])
         t = cp.Variable()
 
-        constraints = []
-        for i in range(X.shape[1]):
-            sample_x = X[:, i].reshape(-1,1)
-            constraints += [-u.T@sample_x - beta.T@sample_x + beta.T@ps + alpha.T@epsilons - t <= 0]
-        constraints += [alpha >= 0]
-        constraints += [alpha+beta >= 0]
+        if not VOL:
+            constraints = []
+            for i in range(X.shape[1]):
+                sample_x = X[:, i].reshape(-1,1)
+                constraints += [-u.T@sample_x - beta.T@sample_x + beta.T@ps + alpha.T@epsilons - t <= 0]
+            constraints += [alpha >= 0]
+            constraints += [alpha+beta >= 0]
+        if VOL:
+            constraints = []
+            for i in range(X.shape[1]):
+                sample_x = X[:, i].reshape(-1,1)
+                constraints += [-u.T@sample_x - beta.T@sample_x + beta.T@ps + alpha.T@epsilons
+                                              - beta_vol.T@sample_x**2 + beta_vol.T@ps_vol + alpha_vol.T@epsilons_vol - t <= 0]
+            constraints += [alpha >= 0]
+            constraints += [alpha+beta >= 0]
+            constraints += [alpha_vol >= 0]
+            constraints += [alpha_vol+beta_vol >= 0]
         constraints += [cp.sum(u)==1, u>=0] #u>=-2, u<=2] 
 
         problem_1 = cp.Problem(objective=cp.Minimize(t), constraints=constraints)
@@ -56,15 +79,22 @@ for trial in tqdm(range(NUM_TRIALS)):
         u_star = u.value.reshape(-1,1)
         beta_star = beta.value.reshape(-1,1)
         alpha_star = alpha.value.reshape(-1,1)
+        if VOL:
+            alpha_vol_star = alpha_vol.value.reshape(-1,1)
+            beta_vol_star  = beta_vol.value.reshape(-1,)
         t_star = t.value
 
         x = cp.Variable(dim)
-        obj = cp.Maximize(-u_star.T@x - beta_star.T@x)
+        if not VOL:
+            obj = cp.Maximize(-u_star.T@x - beta_star.T@x)
+        if VOL:
+            obj = cp.Maximize(-u_star.T@x - beta_star.T@x -  cp.sum(cp.multiply( beta_vol_star, cp.square(x)))     )
         constraints = [x>=-1, x<=1]
         problem_2 = cp.Problem(obj, constraints=constraints)
-        problem_2.solve()
+        if problem_1.value >= 0: # if algorithm not converged
+            problem_2.solve()
 
-        X = np.hstack([X, x.value.reshape(-1,1)])
+            X = np.hstack([X, x.value.reshape(-1,1)])
 
 
     ########################################################################################
@@ -104,9 +134,15 @@ for trial in tqdm(range(NUM_TRIALS)):
         for i in range(dim):
             constraints += [1/n*cp.sum([X_vars[_][i, 0] for _ in range(n)]) - ps[i] <= epsilons[i]]
             constraints += [1/n*cp.sum([X_vars[_][i, 0] for _ in range(n)]) - ps[i] >= -epsilons[i]]
+            if VOL:
+                constraints += [1/n*cp.sum([X_vars[_][i, 0]**2 for _ in range(n)]) - ps_vol[i] <= epsilons_vol[i]]
+                constraints += [1/n*cp.sum([X_vars[_][i, 0]**2 for _ in range(n)]) - ps_vol[i] >= -epsilons_vol[i]]
         
         problem_2 = cp.Problem(cp.Maximize(cp.sum(terms)), constraints=constraints)
-        problem_2.solve()
+        if VOL:
+            problem_2.solve(method='dccp')
+        else:
+            problem_2.solve()
         X_samples = np.hstack([X_vars[_].value.reshape(-1,1) for _ in range(n)])
         
 
