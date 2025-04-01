@@ -12,7 +12,7 @@ plt.rcParams['font.size'] = 15
 # Parameters
 dim = 3
 NUM_ITERATIONS = 50
-NUM_TRIALS = 1
+NUM_TRIALS = 20
 ps = np.array([0.3, -0.1, 0.2]).reshape(-1,1)
 epsilons = np.array([0.4, 0.2, 0.1]).reshape(-1,1)
 # ps = np.array([0., 0., 0.]).reshape(-1,1)
@@ -20,8 +20,8 @@ epsilons = np.array([0.4, 0.2, 0.1]).reshape(-1,1)
 
 VOL = True # indicates whether volatility constraints are present
 if VOL:
-    ps = np.array([0.3, -0.5, 0.3]).reshape(-1,1)
-    epsilons = np.array([0.1, 0.2, 0.1]).reshape(-1,1)
+    ps = np.array([0.3, -0.1, 0.2]).reshape(-1,1)
+    epsilons = np.array([0.4, 0.2, 0.1]).reshape(-1,1)
 
     ps_vol = np.array([0.34, 0.26, 0.34]).reshape(-1,1)
     epsilons_vol = np.array([0.05, 0.05, 0.05]).reshape(-1,1)
