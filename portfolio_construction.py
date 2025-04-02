@@ -25,7 +25,7 @@ us["Sample"] = []
 for trial in tqdm(range(NUM_TRIALS)):
     ########################################################################################
     # Cutting-set method
-    X = np.random.uniform(-1., 1., size=(dim, 15)) # Initial sample returns
+    X = np.random.uniform(-1., 1., size=(dim, 20)) # Initial sample returns
 
     # Main loop
     for iter in range(NUM_ITERATIONS):
@@ -69,7 +69,7 @@ for trial in tqdm(range(NUM_TRIALS)):
 
     ########################################################################################
     # Sample-based Approach
-    X_samples = np.random.uniform(-1., 1., size=(dim, 20)) # Initial sample returns
+    X_samples = np.random.uniform(-1., 1., size=(dim, 100)) # Initial sample returns
 
     for iter in range(NUM_ITERATIONS):
 
@@ -114,8 +114,8 @@ for key in us:
     us[key] = np.mean( np.hstack(us[key]), axis=1)
 
 width =0.3
-plt.bar(1+np.arange(dim), us["Sample"], width=width, label="baseline")
-plt.bar(1+np.arange(dim)+width, us["SIP"], width=width, label="proposed")
+plt.bar(1+np.arange(dim), us["Sample"], width=width, label="best-response")
+plt.bar(1+np.arange(dim)+width, us["SIP"], width=width, label="cutting-set")
 plt.xlabel("Asset")
 plt.ylabel("Portfolio Weight")
 plt.xticks([1,2,3])
