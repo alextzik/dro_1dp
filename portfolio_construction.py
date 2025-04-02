@@ -12,18 +12,14 @@ plt.rcParams['font.size'] = 15
 # Parameters
 dim = 3
 NUM_ITERATIONS = 50
-NUM_TRIALS = 20
-ps = np.array([0.3, -0.1, 0.2]).reshape(-1,1)
-epsilons = np.array([0.4, 0.2, 0.1]).reshape(-1,1)
-# ps = np.array([0., 0., 0.]).reshape(-1,1)
-# epsilons = 2*np.array([1., 1., 1.]).reshape(-1,1)
+NUM_TRIALS = 2
 
 VOL = True # indicates whether volatility constraints are present
 if VOL:
     ps = np.array([0.3, -0.1, 0.2]).reshape(-1,1)
     epsilons = np.array([0.4, 0.2, 0.1]).reshape(-1,1)
 
-    ps_vol = np.array([0.34, 0.26, 0.34]).reshape(-1,1)
+    ps_vol = np.array([0.34, 0.26, 0.1]).reshape(-1,1)
     epsilons_vol = np.array([0.05, 0.05, 0.05]).reshape(-1,1)
 
 # Variables for results
@@ -99,7 +95,7 @@ for trial in tqdm(range(NUM_TRIALS)):
 
     ########################################################################################
     # Sample-based Approach
-    X_samples = np.random.uniform(-1., 1., size=(dim, 20)) # Initial sample returns
+    X_samples = np.random.uniform(-1., 1., size=(dim, 100)) # Initial sample returns
 
     for iter in range(NUM_ITERATIONS):
 
@@ -150,8 +146,8 @@ for key in us:
     us[key] = np.mean( np.hstack(us[key]), axis=1)
 
 width =0.3
-plt.bar(1+np.arange(dim), us["Sample"], width=width, label="baseline")
-plt.bar(1+np.arange(dim)+width, us["SIP"], width=width, label="proposed")
+plt.bar(1+np.arange(dim), us["Sample"], width=width, label="best-response")
+plt.bar(1+np.arange(dim)+width, us["SIP"], width=width, label="cutting-set")
 plt.xlabel("Asset")
 plt.ylabel("Portfolio Weight")
 plt.xticks([1,2,3])
