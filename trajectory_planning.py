@@ -19,7 +19,7 @@ A = np.array([[0.4, 1.5],
               [0., 0.9]])
 B = np.array([[0.],
               [1.]])
-T = 50
+T = 10
 z_star = np.array([[0.],
                    [0.]])
 
@@ -80,15 +80,15 @@ for trial in tqdm(range(NUM_TRIALS)):
         obj = cp.Maximize(cp.pnorm(np.linalg.matrix_power(A, T)@x + var, 2) - beta_star.T@x)
         constraints = [x>=x_low, x<=x_high]
         problem_2 = cp.Problem(obj, constraints=constraints)
-        if problem_1.value > 0:
-            problem_2.solve(method='dccp')
+        
+        problem_2.solve(method='dccp')
 
-            X = np.hstack([X, x.value.reshape(-1,1)])
+        X = np.hstack([X, x.value.reshape(-1,1)])
 
 
     ########################################################################################
     # Sample-based Approach
-    X_samples = np.random.uniform(x_low, x_high, size=(dim, 20)) # Initial sample returns
+    X_samples = np.random.uniform(x_low, x_high, size=(dim, 50)) # Initial sample returns
 
     for iter in range(NUM_ITERATIONS):
 
@@ -147,3 +147,43 @@ for key in us:
     print()
 
 
+# Create figure and axis
+fig, axes = plt.subplots(1, 2, figsize=(20,10))
+
+# Fill the box with light grey color
+axes[0].fill_between([x_low, x_high], x_low, x_high, color='lightgrey')
+axes[1].fill_between([x_low, x_high], x_low, x_high, color='lightgrey')
+
+for _ in range(50):
+    x_start = np.random.uniform(low=x_low, high=x_high, size=(2,1))
+    xs_SIP = [x_start]
+    xs_Sam = [x_start]
+    for t in range(T):
+        xs_SIP += [A@xs_SIP[t] + B*us["SIP"][t]]
+        xs_Sam += [A@xs_Sam[t] + B*us["Sample"][t]]
+
+    xs_SIP = np.hstack(xs_SIP)
+    xs_Sam = np.hstack(xs_Sam)
+
+    axes[0].plot(xs_SIP[0, :], xs_SIP[1, :], color="#ff7f0e")
+    axes[0].plot(x_start[0, 0], x_start[1, 0], marker='*', markersize=10, color="black")
+
+    axes[1].plot(xs_Sam[0, :], xs_Sam[1, :], color="#1f77b4")
+    axes[1].plot(x_start[0, 0], x_start[1, 0], marker='*', markersize=10, color="black")
+
+# Set limits and aspect ratio
+axes[0].set_aspect('equal')
+axes[1].set_aspect('equal')
+
+axes[0].set_xlabel(r"$x_1$")
+axes[1].set_xlabel(r"$x_1$")
+
+axes[0].set_ylabel(r"$x_2$")
+axes[1].set_ylabel(r"$x_2$")
+
+axes[0].set_title("Cutting-Set Method")
+axes[1].set_title("Best-Response Method")
+
+# Show the plot
+plt.tight_layout()
+plt.savefig("trajectory_T10.pdf", format='pdf', bbox_inches='tight')
