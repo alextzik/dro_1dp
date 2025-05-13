@@ -7,7 +7,7 @@ import pdb
 from tqdm import tqdm
 
 plt.rcParams['font.family'] = 'Times New Roman'
-plt.rcParams['font.size'] = 15
+plt.rcParams['font.size'] = 34
 
 # Parameters
 dim = 2
@@ -19,9 +19,9 @@ A = np.array([[0.4, 1.5],
               [0., 0.9]])
 B = np.array([[0.],
               [1.]])
-T = 10
-z_star = np.array([[0.],
-                   [0.]])
+T = 50
+z_star = np.array([[2.],
+                   [1.]])
 
 x_low = -0.3
 x_high = 0.3
@@ -148,13 +148,13 @@ for key in us:
 
 
 # Create figure and axis
-fig, axes = plt.subplots(1, 2, figsize=(20,10))
+fig, axes = plt.subplots(2, 1, figsize=(15, 10), constrained_layout=True)
 
 # Fill the box with light grey color
 axes[0].fill_between([x_low, x_high], x_low, x_high, color='lightgrey')
 axes[1].fill_between([x_low, x_high], x_low, x_high, color='lightgrey')
 
-for _ in range(50):
+for _ in range(10):
     x_start = np.random.uniform(low=x_low, high=x_high, size=(2,1))
     xs_SIP = [x_start]
     xs_Sam = [x_start]
@@ -176,14 +176,15 @@ axes[0].set_aspect('equal')
 axes[1].set_aspect('equal')
 
 axes[0].set_xlabel(r"$x_1$")
-axes[1].set_xlabel(r"$x_1$")
+# axes[1].set_xlabel(r"$x_1$")
 
 axes[0].set_ylabel(r"$x_2$")
-axes[1].set_ylabel(r"$x_2$")
+axes[0].set_ylim(None, 1.1)
+axes[1].set_ylim(None, 1.1)
+# axes[1].set_ylabel(r"$x_2$")
 
 axes[0].set_title("Cutting-Set Method")
 axes[1].set_title("Best-Response Method")
 
 # Show the plot
-plt.tight_layout()
-plt.savefig("trajectory_T10.pdf", format='pdf', bbox_inches='tight')
+plt.savefig("trajectory_T50_21.pdf", format='pdf', bbox_inches='tight')
