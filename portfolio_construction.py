@@ -11,11 +11,11 @@ plt.rcParams['font.size'] = 15
 # Parameters
 dim = 3
 NUM_ITERATIONS = 50
-NUM_TRIALS = 20
+NUM_TRIALS = 10
 ps = np.array([0.3, -0.1, 0.2]).reshape(-1,1)
-epsilons = np.array([0.2, 0.2, 0.1]).reshape(-1,1)
+# epsilons = np.array([0.2, 0.2, 0.1]).reshape(-1,1)
 # ps = np.array([0., 0., 0.]).reshape(-1,1)
-# epsilons = 2*np.array([1., 1., 1.]).reshape(-1,1)
+epsilons = 2*np.array([1., 1., 1.]).reshape(-1,1)
 
 # Variables for results
 us = {}
@@ -121,3 +121,6 @@ plt.ylabel("Portfolio Weight")
 plt.xticks([1,2,3])
 plt.legend()
 plt.show()
+
+print(us["Sample"])
+print(us["SIP"])
